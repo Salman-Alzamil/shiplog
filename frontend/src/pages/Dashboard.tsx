@@ -1,31 +1,10 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { api, Project } from "../api/client";
-
-const s: Record<string, React.CSSProperties> = {
-  page: { maxWidth: 720, margin: "0 auto", padding: "40px 24px" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 40 },
-  logo: { fontSize: 22, fontWeight: 700 },
-  logout: { background: "none", border: "1px solid #333", color: "#888", borderRadius: 6, padding: "6px 14px", cursor: "pointer", fontSize: 13 },
-  heading: { fontSize: 24, fontWeight: 700, marginBottom: 8 },
-  sub: { color: "#888", marginBottom: 32, fontSize: 14 },
-  form: { display: "flex", gap: 12, marginBottom: 40, flexWrap: "wrap" as const },
-  input: { flex: 1, minWidth: 140, background: "#1a1a1a", border: "1px solid #333", color: "#e8e8e8", borderRadius: 8, padding: "10px 14px", fontSize: 14, outline: "none" },
-  addBtn: { background: "#fff", color: "#0f0f0f", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer" },
-  card: { background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 10, padding: "20px 24px", marginBottom: 16, cursor: "pointer", transition: "border-color 0.15s" },
-  cardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" },
-  repoName: { fontSize: 16, fontWeight: 600, marginBottom: 4 },
-  slug: { fontSize: 12, color: "#666" },
-  deleteBtn: { background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 18, padding: "0 4px" },
-  empty: { color: "#555", fontSize: 14, padding: "32px 0" },
-  webhookBox: { background: "#111", border: "1px solid #2a2a2a", borderRadius: 8, padding: "16px", marginTop: 12 },
-  webhookLabel: { fontSize: 12, color: "#666", marginBottom: 6 },
-  webhookVal: { fontSize: 12, color: "#aaa", fontFamily: "monospace", wordBreak: "break-all" as const },
-  viewBtn: { fontSize: 13, color: "#fff", textDecoration: "none", display: "inline-block", marginTop: 12 },
-};
+import { Link, useNavigate } from "react-router-dom";
+import { api, BillingStatus, Project } from "../api/client";
 
 export default function Dashboard() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [billing, setBilling] = useState<BillingStatus | null>(null);
   const [owner, setOwner] = useState("");
   const [repo, setRepo] = useState("");
   const [loading, setLoading] = useState(false);
@@ -34,7 +13,10 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!localStorage.getItem("token")) { navigate("/"); return; }
-    api.projects.list().then(setProjects).catch(() => { localStorage.removeItem("token"); navigate("/"); });
+    Promise.all([
+      api.projects.list().then(setProjects),
+      api.billing.status().then(setBilling),
+    ]).catch(() => { localStorage.removeItem("token"); navigate("/"); });
   }, [navigate]);
 
   async function addProject() {
@@ -57,76 +39,140 @@ export default function Dashboard() {
     setProjects((prev) => prev.filter((p) => p.id !== id));
   }
 
+  const trialDays = billing?.trial_days_remaining ?? 0;
+  const isActive = billing?.is_active ?? true;
+
   return (
-    <div style={s.page}>
-      <div style={s.header}>
-        <div style={s.logo}>Shiplog</div>
-        <button style={s.logout} onClick={() => { localStorage.removeItem("token"); navigate("/"); }}>Log out</button>
-      </div>
-
-      <div style={s.heading}>Your projects</div>
-      <p style={s.sub}>Connect a GitHub repo and add the webhook to start generating changelogs.</p>
-
-      <div style={s.form}>
-        <input style={s.input} placeholder="owner" value={owner} onChange={(e) => setOwner(e.target.value)} />
-        <input style={s.input} placeholder="repo" value={repo} onChange={(e) => setRepo(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && addProject()} />
-        <button style={s.addBtn} onClick={addProject} disabled={loading}>
-          {loading ? "Adding…" : "Add repo"}
-        </button>
-      </div>
-
-      {projects.length === 0 && <div style={s.empty}>No repos connected yet.</div>}
-
-      {projects.map((p) => (
-        <div key={p.id} style={s.card} onClick={() => navigate(`/dashboard/project/${p.id}`)}>
-          <div style={s.cardTop}>
-            <div>
-              <div style={s.repoName}>{p.repo_owner}/{p.repo_name}</div>
-              <div style={s.slug}>shiplog.app/changelog/{p.slug}</div>
-            </div>
-            <button style={s.deleteBtn} onClick={(e) => deleteProject(e, p.id)} title="Remove">×</button>
-          </div>
-
-          {expandedId === p.id && (
-            <div style={s.webhookBox} onClick={(e) => e.stopPropagation()}>
-              <SetupInstructions project={p} />
-            </div>
-          )}
-
-          {expandedId !== p.id && (
-            <button style={{ ...s.deleteBtn, color: "#555", fontSize: 13, marginTop: 8 }}
-              onClick={(e) => { e.stopPropagation(); setExpandedId(p.id); }}>
-              Show webhook setup ↓
-            </button>
-          )}
+    <div style={{ background: "#0a0a0a", minHeight: "100vh", color: "#e8e8e8" }}>
+      {/* Trial / expired banner */}
+      {billing && billing.subscription_status === "trial" && trialDays <= 7 && (
+        <div style={{ background: trialDays <= 2 ? "#7f1d1d" : "#1c1917", borderBottom: "1px solid #292524", padding: "10px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13 }}>
+          <span style={{ color: trialDays <= 2 ? "#fca5a5" : "#a8a29e" }}>
+            {trialDays === 0 ? "Your trial has expired." : `Trial ends in ${trialDays} day${trialDays === 1 ? "" : "s"}.`}
+          </span>
+          <Link to="/billing" style={{ color: "#fff", fontWeight: 600, textDecoration: "none", background: "#fff", borderRadius: 6, padding: "5px 14px", color: "#000", fontSize: 12 }}>
+            Upgrade now →
+          </Link>
         </div>
-      ))}
+      )}
+      {billing && billing.subscription_status === "cancelled" && (
+        <div style={{ background: "#1c1917", borderBottom: "1px solid #292524", padding: "10px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13 }}>
+          <span style={{ color: "#a8a29e" }}>Your subscription is inactive.</span>
+          <Link to="/billing" style={{ color: "#000", fontWeight: 600, textDecoration: "none", background: "#fff", borderRadius: 6, padding: "5px 14px", fontSize: 12 }}>
+            Reactivate →
+          </Link>
+        </div>
+      )}
+
+      <div style={{ maxWidth: 760, margin: "0 auto", padding: "40px 24px" }}>
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 40 }}>
+          <span style={{ fontSize: 20, fontWeight: 700 }}>Shiplog</span>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <Link to="/billing" style={{ fontSize: 13, color: "#666", textDecoration: "none" }}>Billing</Link>
+            <button style={{ background: "none", border: "1px solid #2a2a2a", color: "#666", borderRadius: 6, padding: "6px 14px", cursor: "pointer", fontSize: 13 }}
+              onClick={() => { localStorage.removeItem("token"); navigate("/"); }}>
+              Log out
+            </button>
+          </div>
+        </div>
+
+        <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>Your projects</div>
+        <p style={{ color: "#555", fontSize: 14, marginBottom: 32 }}>Connect a repo and add the webhook to start generating changelogs.</p>
+
+        {/* Add repo form */}
+        <div style={{ display: "flex", gap: 10, marginBottom: 40, flexWrap: "wrap" as const }}>
+          <input
+            style={{ flex: 1, minWidth: 130, background: "#111", border: "1px solid #2a2a2a", color: "#e8e8e8", borderRadius: 8, padding: "10px 14px", fontSize: 14, outline: "none" }}
+            placeholder="owner" value={owner} onChange={(e) => setOwner(e.target.value)}
+          />
+          <input
+            style={{ flex: 1, minWidth: 130, background: "#111", border: "1px solid #2a2a2a", color: "#e8e8e8", borderRadius: 8, padding: "10px 14px", fontSize: 14, outline: "none" }}
+            placeholder="repo" value={repo} onChange={(e) => setRepo(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addProject()}
+          />
+          <button
+            style={{ background: "#fff", color: "#000", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer", opacity: loading ? 0.6 : 1 }}
+            onClick={addProject} disabled={loading}>
+            {loading ? "Adding…" : "+ Add repo"}
+          </button>
+        </div>
+
+        {projects.length === 0 && (
+          <div style={{ textAlign: "center", padding: "60px 0", color: "#444" }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>📋</div>
+            <div style={{ fontSize: 15 }}>No repos connected yet.</div>
+            <div style={{ fontSize: 13, marginTop: 6 }}>Add a repo above to get started.</div>
+          </div>
+        )}
+
+        {projects.map((p) => (
+          <div key={p.id}
+            style={{ background: "#111", border: "1px solid #1e1e1e", borderRadius: 12, padding: "20px 24px", marginBottom: 14, cursor: "pointer", transition: "border-color 0.15s" }}
+            onClick={() => navigate(`/dashboard/project/${p.id}`)}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 3 }}>{p.repo_owner}/{p.repo_name}</div>
+                <div style={{ fontSize: 12, color: "#555" }}>
+                  <Link to={`/changelog/${p.slug}`} target="_blank" style={{ color: "#555" }} onClick={(e) => e.stopPropagation()}>
+                    /changelog/{p.slug}
+                  </Link>
+                </div>
+              </div>
+              <button
+                style={{ background: "none", border: "none", color: "#444", cursor: "pointer", fontSize: 20, padding: "0 4px", lineHeight: 1 }}
+                onClick={(e) => deleteProject(e, p.id)}>×</button>
+            </div>
+
+            {expandedId === p.id ? (
+              <div style={{ marginTop: 16, background: "#0d0d0d", borderRadius: 8, padding: "16px" }} onClick={(e) => e.stopPropagation()}>
+                <SetupInstructions project={p} />
+              </div>
+            ) : (
+              <button
+                style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 12, marginTop: 10, padding: 0 }}
+                onClick={(e) => { e.stopPropagation(); setExpandedId(p.id); }}>
+                Show webhook setup ↓
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
 function SetupInstructions({ project }: { project: Project }) {
+  const [copied, setCopied] = useState<string | null>(null);
+
+  function copy(text: string, key: string) {
+    navigator.clipboard.writeText(text);
+    setCopied(key);
+    setTimeout(() => setCopied(null), 2000);
+  }
+
+  const row = (label: string, value: string, key: string) => (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ color: "#555", fontSize: 11, textTransform: "uppercase" as const, letterSpacing: 1, marginBottom: 4 }}>{label}</div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <code style={{ color: "#aaa", fontSize: 12, wordBreak: "break-all" as const, flex: 1 }}>{value}</code>
+        <button onClick={() => copy(value, key)}
+          style={{ background: "none", border: "1px solid #2a2a2a", color: copied === key ? "#22c55e" : "#555", borderRadius: 4, padding: "3px 10px", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" as const }}>
+          {copied === key ? "Copied!" : "Copy"}
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div style={{ fontSize: 13 }}>
-      <p style={{ color: "#888", marginBottom: 12 }}>
-        Go to <strong style={{ color: "#ccc" }}>GitHub → {project.repo_owner}/{project.repo_name} → Settings → Webhooks → Add webhook</strong> and use:
+      <p style={{ color: "#666", marginBottom: 14 }}>
+        Go to <strong style={{ color: "#888" }}>GitHub → {project.repo_owner}/{project.repo_name} → Settings → Webhooks → Add webhook</strong>
       </p>
-      <div style={{ marginBottom: 10 }}>
-        <div style={{ color: "#666", fontSize: 11, marginBottom: 3 }}>PAYLOAD URL</div>
-        <code style={{ color: "#aaa", fontSize: 12, wordBreak: "break-all" }}>{project.webhook_url}</code>
-      </div>
-      <div style={{ marginBottom: 10 }}>
-        <div style={{ color: "#666", fontSize: 11, marginBottom: 3 }}>SECRET</div>
-        <code style={{ color: "#aaa", fontSize: 12 }}>{project.webhook_secret}</code>
-      </div>
-      <div>
-        <div style={{ color: "#666", fontSize: 11, marginBottom: 3 }}>CONTENT TYPE</div>
-        <code style={{ color: "#aaa", fontSize: 12 }}>application/json</code>
-      </div>
-      <p style={{ color: "#666", fontSize: 12, marginTop: 12 }}>
-        Set to send <strong style={{ color: "#888" }}>Pull requests</strong> events only. That's it.
-      </p>
+      {row("Payload URL", project.webhook_url, "url")}
+      {row("Secret", project.webhook_secret, "secret")}
+      {row("Content type", "application/json", "ct")}
+      <p style={{ color: "#555", fontSize: 12, marginTop: 8 }}>Select <strong style={{ color: "#777" }}>Pull requests</strong> events only.</p>
     </div>
   );
 }

@@ -108,8 +108,7 @@ def delete_project(
 
 
 def _to_response(p: Project) -> dict:
-    import os
-    base_url = os.environ.get("BASE_URL", "http://localhost:8000")
+    base_url = settings.base_url
     return {
         "id": p.id,
         "repo_owner": p.repo_owner,

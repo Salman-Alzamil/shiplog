@@ -13,7 +13,6 @@ from ..services.github import exchange_code_for_token, get_github_user, get_oaut
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-# In production use Redis; this is fine for a single-process v1
 _pending_states: set[str] = set()
 
 
@@ -51,12 +50,17 @@ async def github_callback(code: str, state: str, db: Session = Depends(get_db)):
     if user:
         user.github_access_token = access_token
         user.github_username = gh_user.get("login", "")
+        # Backfill trial for existing users who signed up before billing was added
+        if user.trial_ends_at is None:
+            user.trial_ends_at = datetime.now(timezone.utc) + timedelta(days=14)
     else:
         user = User(
             github_id=github_id,
             github_username=gh_user.get("login", ""),
             github_access_token=access_token,
             email=gh_user.get("email"),
+            subscription_status="trial",
+            trial_ends_at=datetime.now(timezone.utc) + timedelta(days=14),
         )
         db.add(user)
 

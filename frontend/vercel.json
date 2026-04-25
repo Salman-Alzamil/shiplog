@@ -1,0 +1,3 @@
+{
+  "rewrites": [{ "source": "/((?!api|auth|webhooks|public|health).*)", "destination": "/index.html" }]
+}

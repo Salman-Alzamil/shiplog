@@ -1,22 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-const s: Record<string, React.CSSProperties> = {
-  page: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" },
-  card: { textAlign: "center", maxWidth: 400, padding: "48px 32px" },
-  logo: { fontSize: 32, fontWeight: 700, marginBottom: 8, letterSpacing: -1 },
-  tagline: { color: "#888", marginBottom: 40, lineHeight: 1.6 },
-  btn: {
-    display: "inline-flex", alignItems: "center", gap: 10, background: "#fff", color: "#0f0f0f",
-    border: "none", borderRadius: 8, padding: "12px 24px", fontSize: 15, fontWeight: 600,
-    cursor: "pointer", textDecoration: "none",
-  },
-  features: { marginTop: 48, display: "grid", gap: 16, textAlign: "left" },
-  feature: { background: "#1a1a1a", borderRadius: 8, padding: "14px 16px" },
-  ftitle: { fontWeight: 600, fontSize: 14, marginBottom: 4 },
-  fdesc: { color: "#888", fontSize: 13, lineHeight: 1.5 },
-};
-
 export default function Login() {
   const navigate = useNavigate();
 
@@ -25,31 +9,133 @@ export default function Login() {
   }, [navigate]);
 
   return (
-    <div style={s.page}>
-      <div style={s.card}>
-        <div style={s.logo}>Shiplog</div>
-        <p style={s.tagline}>
-          Merge a PR. Your changelog updates automatically.<br />
-          Powered by AI. Built for small teams.
-        </p>
-        <a href="/auth/github" style={s.btn}>
-          <GithubIcon />
-          Continue with GitHub
-        </a>
-        <div style={s.features}>
-          {[
-            ["Automatic", "Every merged PR becomes a polished changelog entry via Claude."],
-            ["Public page", "Share a clean, hosted changelog page with your users."],
-            ["You stay in control", "Edit, hide, or delete any entry before it goes public."],
-          ].map(([title, desc]) => (
-            <div key={title} style={s.feature}>
-              <div style={s.ftitle}>{title}</div>
-              <div style={s.fdesc}>{desc}</div>
-            </div>
-          ))}
-        </div>
-      </div>
+    <div style={{ background: "#0a0a0a", minHeight: "100vh", color: "#e8e8e8" }}>
+      <Nav />
+      <Hero />
+      <Features />
+      <Pricing />
+      <Footer />
     </div>
+  );
+}
+
+function Nav() {
+  return (
+    <nav style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 32px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <span style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.5 }}>Shiplog</span>
+      <a href="/auth/github" style={{ background: "#fff", color: "#000", borderRadius: 8, padding: "9px 20px", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
+        Get started free
+      </a>
+    </nav>
+  );
+}
+
+function Hero() {
+  return (
+    <section style={{ maxWidth: 760, margin: "0 auto", padding: "80px 32px 64px", textAlign: "center" }}>
+      <div style={{ display: "inline-block", background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 20, padding: "6px 14px", fontSize: 12, color: "#888", marginBottom: 28 }}>
+        14-day free trial · No credit card required
+      </div>
+      <h1 style={{ fontSize: "clamp(36px, 6vw, 60px)", fontWeight: 800, lineHeight: 1.1, letterSpacing: -2, marginBottom: 24 }}>
+        Your changelog,<br />
+        <span style={{ color: "#666" }}>on autopilot.</span>
+      </h1>
+      <p style={{ fontSize: 18, color: "#888", lineHeight: 1.7, marginBottom: 40, maxWidth: 520, margin: "0 auto 40px" }}>
+        Connect your GitHub repo. Every merged PR becomes a polished, user-facing changelog entry automatically. No writing. No forgetting.
+      </p>
+      <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+        <a href="/auth/github" style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "#fff", color: "#000", borderRadius: 10, padding: "14px 28px", fontSize: 15, fontWeight: 700, textDecoration: "none" }}>
+          <GithubIcon /> Start free with GitHub
+        </a>
+      </div>
+      <p style={{ marginTop: 16, color: "#555", fontSize: 13 }}>$19/month after trial · Cancel anytime</p>
+    </section>
+  );
+}
+
+function Features() {
+  const items = [
+    {
+      icon: "⚡",
+      title: "Instant capture",
+      desc: "Merge a PR and the entry appears in your changelog within seconds. Zero manual steps.",
+    },
+    {
+      icon: "✏️",
+      title: "Full control",
+      desc: "Edit, hide, or delete any entry before it goes public. You're always in charge.",
+    },
+    {
+      icon: "🔗",
+      title: "Public changelog page",
+      desc: "A clean, hosted page your users can bookmark. Share it in your app, docs, or emails.",
+    },
+    {
+      icon: "📂",
+      title: "Organized by type",
+      desc: "Entries are auto-tagged as feature, fix, or improvement based on your PR naming.",
+    },
+  ];
+
+  return (
+    <section style={{ maxWidth: 1000, margin: "0 auto", padding: "0 32px 80px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
+        {items.map((item) => (
+          <div key={item.title} style={{ background: "#111", border: "1px solid #1e1e1e", borderRadius: 12, padding: "28px 24px" }}>
+            <div style={{ fontSize: 28, marginBottom: 14 }}>{item.icon}</div>
+            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 8 }}>{item.title}</div>
+            <div style={{ color: "#777", fontSize: 14, lineHeight: 1.6 }}>{item.desc}</div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Pricing() {
+  return (
+    <section style={{ maxWidth: 480, margin: "0 auto", padding: "0 32px 100px", textAlign: "center" }}>
+      <h2 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>Simple pricing</h2>
+      <p style={{ color: "#666", marginBottom: 40, fontSize: 15 }}>One plan. Everything included.</p>
+      <div style={{ background: "#111", border: "1px solid #2a2a2a", borderRadius: 16, padding: "40px 36px", textAlign: "left" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28 }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 4 }}>Pro</div>
+            <div style={{ color: "#666", fontSize: 14 }}>Everything you need</div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 36, fontWeight: 800 }}>$19</div>
+            <div style={{ color: "#666", fontSize: 13 }}>per month</div>
+          </div>
+        </div>
+        <ul style={{ listStyle: "none", padding: 0, marginBottom: 32 }}>
+          {[
+            "Unlimited repos",
+            "Unlimited changelog entries",
+            "Public changelog page",
+            "Edit & manage entries",
+            "GitHub webhook integration",
+            "14-day free trial",
+          ].map((f) => (
+            <li key={f} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, fontSize: 14, color: "#ccc" }}>
+              <span style={{ color: "#22c55e", fontWeight: 700 }}>✓</span> {f}
+            </li>
+          ))}
+        </ul>
+        <a href="/auth/github" style={{ display: "block", background: "#fff", color: "#000", borderRadius: 10, padding: "14px", fontSize: 15, fontWeight: 700, textDecoration: "none", textAlign: "center" }}>
+          Start 14-day free trial
+        </a>
+        <p style={{ textAlign: "center", marginTop: 12, color: "#555", fontSize: 12 }}>No credit card required</p>
+      </div>
+    </section>
+  );
+}
+
+function Footer() {
+  return (
+    <footer style={{ borderTop: "1px solid #1a1a1a", padding: "24px 32px", textAlign: "center", color: "#444", fontSize: 13 }}>
+      © {new Date().getFullYear()} Shiplog · Built for shipping teams
+    </footer>
   );
 }
 

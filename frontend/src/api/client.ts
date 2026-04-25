@@ -1,4 +1,4 @@
-const BASE = "";
+const BASE = import.meta.env.VITE_API_URL ?? "";
 
 function authHeaders(): HeadersInit {
   const token = localStorage.getItem("token");
@@ -44,6 +44,12 @@ export interface PublicChangelog {
   entries: Entry[];
 }
 
+export interface BillingStatus {
+  subscription_status: string;
+  trial_days_remaining: number;
+  is_active: boolean;
+}
+
 export const api = {
   projects: {
     list: () => request<Project[]>("/api/projects/"),
@@ -62,5 +68,16 @@ export const api = {
   },
   public: {
     changelog: (slug: string) => request<PublicChangelog>(`/public/${slug}`),
+  },
+  billing: {
+    status: () => request<BillingStatus>("/api/billing/status"),
+    checkout: async () => {
+      const { url } = await request<{ url: string }>("/api/billing/checkout", { method: "POST" });
+      window.location.href = url;
+    },
+    portal: async () => {
+      const { url } = await request<{ url: string }>("/api/billing/portal", { method: "POST" });
+      window.location.href = url;
+    },
   },
 };

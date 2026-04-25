@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -14,7 +16,27 @@ class User(Base):
     email = Column(String)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    # Subscription
+    stripe_customer_id = Column(String, nullable=True)
+    subscription_status = Column(String, default="trial")  # trial | active | cancelled | past_due
+    trial_ends_at = Column(DateTime(timezone=True), nullable=True)
+
     projects = relationship("Project", back_populates="user", cascade="all, delete-orphan")
+
+    def is_active_subscriber(self) -> bool:
+        if self.subscription_status == "active":
+            return True
+        if self.subscription_status == "trial":
+            ends = self.trial_ends_at
+            if ends and ends > datetime.now(timezone.utc):
+                return True
+        return False
+
+    def trial_days_remaining(self) -> int:
+        if self.trial_ends_at is None:
+            return 0
+        delta = self.trial_ends_at - datetime.now(timezone.utc)
+        return max(0, delta.days)
 
 
 class Project(Base):
@@ -24,9 +46,7 @@ class Project(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     repo_owner = Column(String, nullable=False)
     repo_name = Column(String, nullable=False)
-    # unique token used in the webhook URL so we know which project it belongs to
     webhook_token = Column(String, unique=True, nullable=False)
-    # secret the user sets in GitHub webhook settings for signature verification
     webhook_secret = Column(String, nullable=False)
     slug = Column(String, unique=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

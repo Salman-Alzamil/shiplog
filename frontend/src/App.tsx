@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Route, Routes, useNavigate, useSearchParams } from "react-router-dom";
+import Billing from "./pages/Billing";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import ProjectDetail from "./pages/ProjectDetail";
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="/" element={<Login />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/dashboard/project/:id" element={<ProjectDetail />} />
+        <Route path="/billing" element={<Billing />} />
         <Route path="/changelog/:slug" element={<PublicChangelog />} />
       </Routes>
     </>
