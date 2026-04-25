@@ -1,48 +1,34 @@
-import json
-import anthropic
-from ..config import settings
-
-_client = None
-
-
-def _get_client() -> anthropic.Anthropic:
-    global _client
-    if _client is None:
-        _client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-    return _client
+import re
 
 
 def generate_changelog_entry(pr_title: str, pr_body: str | None, repo_name: str) -> dict:
-    """Turn a merged PR into a user-facing changelog entry.
+    """Format a merged PR as a changelog entry without any external API call.
 
+    Infers category from common PR title prefixes (feat/fix/chore etc.).
     Returns {"title": str, "summary": str, "category": "feature"|"fix"|"improvement"}
     """
-    prompt = f"""You are writing a changelog entry for a software product called "{repo_name}".
+    title = _strip_prefix(pr_title)
+    category = _infer_category(pr_title)
+    summary = (pr_body or "").strip() or title
 
-A pull request was just merged:
-Title: {pr_title}
-Description: {pr_body or "No description provided."}
+    return {"title": title, "summary": summary, "category": category}
 
-Write a concise, user-friendly changelog entry. Return ONLY valid JSON with these keys:
-- "title": Short title written for end users, not developers (max 8 words, no jargon)
-- "summary": 1-2 sentences describing what changed and why the user cares
-- "category": exactly one of "feature", "fix", or "improvement"
 
-Focus on user impact. Use plain language. Do not include markdown or extra text."""
+_PREFIX_RE = re.compile(
+    r"^(feat|feature|fix|bug|chore|refactor|perf|style|docs|test|ci|build|revert)"
+    r"(\([^)]*\))?[!:]?\s*",
+    re.IGNORECASE,
+)
 
-    message = _get_client().messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=300,
-        messages=[{"role": "user", "content": prompt}],
-    )
 
-    text = message.content[0].text.strip()
-    start = text.find("{")
-    end = text.rfind("}") + 1
-    parsed = json.loads(text[start:end])
+def _strip_prefix(title: str) -> str:
+    return _PREFIX_RE.sub("", title).strip().capitalize()
 
-    # Normalise category in case the model drifts
-    if parsed.get("category") not in ("feature", "fix", "improvement"):
-        parsed["category"] = "improvement"
 
-    return parsed
+def _infer_category(title: str) -> str:
+    lower = title.lower()
+    if re.match(r"(feat|feature)", lower):
+        return "feature"
+    if re.match(r"(fix|bug)", lower):
+        return "fix"
+    return "improvement"
